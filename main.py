@@ -1,5 +1,9 @@
 import json
+import praw
 import os
+from pytrends.request import TrendReq
+import datetime
+import random
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -7,6 +11,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
+import time
 
 driver_path = r'C:\Users\MITT\quora\chromedriver.exe'
 chrome_options = Options()
@@ -15,6 +20,102 @@ chrome_options.headless = True
 service = Service(executable_path=driver_path)
 driver = webdriver.Chrome(service=service, options=chrome_options)
 driver.get("https://www.quora.com/")
+
+import praw
+from pytrends.request import TrendReq
+import datetime
+import random
+
+
+def fetch_questions_and_save_to_file():
+    def get_random_keywords(retries=3):
+        for attempt in range(retries):
+            try:
+                # Connect to Google Trends
+                pytrends = TrendReq(hl='en-US', tz=360)
+
+                # Get the current year
+                current_year = datetime.datetime.now().year
+
+                # Randomize the year for fetching top charts within the range of 2004 to the current year
+                random_year = random.randint(2004, current_year)
+
+                # Fetch top keywords for the random year
+                top_keywords_random_year = pytrends.top_charts(date=random_year, hl='en-US', tz=300, geo='GLOBAL')
+
+                # Extract titles from top keywords
+                keyword_titles = top_keywords_random_year['title'].tolist()
+
+                return keyword_titles
+
+            except Exception as e:
+                print(f"Attempt {attempt + 1} failed:", e)
+                if attempt < retries - 1:
+                    print("Retrying...")
+                    time.sleep(3)
+                else:
+                    print("Maximum retries exceeded.")
+                    return []
+
+    def scrape_reddit_questions_for_keywords(keywords, subreddits, num_questions_per_keyword=10):
+        # Reddit API credentials
+        reddit = praw.Reddit(client_id='YOUR_CLIENT_ID',
+                             client_secret='YOUR_CLIENT_SECRET',
+                             user_agent='my-app YOUR_USERNAME')
+
+        # Search for questions related to each keyword
+        all_questions = []
+
+        for keyword in keywords:
+            for subreddit in subreddits:
+                print(f"Searching for questions related to '{keyword}' in subreddit '{subreddit}'...")
+                # Search for questions related to the keyword in the specified subreddit
+                search_results = reddit.subreddit(subreddit).search(keyword, limit=num_questions_per_keyword,
+                                                                    sort='relevance')
+
+                # Extract titles of the questions
+                questions = [submission.title for submission in search_results if submission.title.endswith('?')]
+
+                print(f"Found {len(questions)} questions.")
+                all_questions.extend(questions)
+
+        return all_questions
+
+    if __name__ == "__main__":
+        # Check if the previous questions.txt file exists
+        if os.path.exists('questions.txt'):
+            delete_previous = input(
+                "A previous questions.txt file exists. Do you want to delete it? (yes/no): ").lower()
+            if delete_previous == 'yes':
+                os.remove('questions.txt')
+                print("Previous questions.txt file deleted.")
+            else:
+                print("Exiting the program.")
+                exit()
+
+
+        keywords = get_random_keywords()
+
+        if keywords:
+            # Specify subreddits for Q&A
+            subreddits = ['AskReddit', 'AskScience', 'AskHistorians']
+
+            # Fetch 10 questions for each keyword from specified subreddits
+            num_questions_per_keyword = 10
+            questions = scrape_reddit_questions_for_keywords(keywords, subreddits, num_questions_per_keyword)
+
+            # Write questions to a file
+            with open('questions.txt', 'w') as file:
+                for question in questions:
+                    file.write(question + '\n')
+
+            print("Questions have been saved to 'questions.txt' file.")
+        else:
+            print("Failed to fetch keywords from Google Trends. Please check your internet connection and try again.")
+
+
+
+fetch_questions_and_save_to_file()
 
 with open('credentials.json') as f:
     credentials = json.load(f)
@@ -77,3 +178,16 @@ def repeat():
     add_questions()
     placeholdeer()
     submit_questions()
+
+# Repeat the process until there are no more questions
+while True:
+    repeat()
+    with open('questions.txt') as f:
+        if not f.readlines():
+            break
+
+
+input("Press any key to exit...")
+
+# Close the WebDriver session
+driver.quit()
