@@ -1,7 +1,8 @@
 <div align="center">
   <br />
 
-![2560px-Quora_logo svg](https://github.com/Akashh141/Quora-Partner-Program-Automation-Assistant/assets/123226444/5187a2ee-5918-4430-849e-6564dd4bbf1a)
+
+![2560px-Quora_logo svg](https://github.com/Akashh141/Quora-Partner-Program-Automation-Assistant/assets/123226444/7c4869eb-578c-4c8d-a3fd-1b36701d808c)
 
 
 
